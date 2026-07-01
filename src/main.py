@@ -1,7 +1,7 @@
 """
 Audio Overlay Actor
 Lee el input desde la API de Apify usando las variables de entorno
-que Apify inyecta automáticamente en cada run.
+que Apify inyecta automaticamente en cada run.
 """
 
 import json
@@ -38,37 +38,26 @@ def log(nivel: str, mensaje: str) -> None:
     print(f"[{nivel}] {mensaje}", flush=True)
 
 
-def get_input() -> dict:
-    """
-    Apify inyecta estas variables en cada run:
-    - APIFY_TOKEN: token de autenticación
-    - APIFY_DEFAULT_KEY_VALUE_STORE_ID: ID del store donde está el input
-    Las usamos para leer el INPUT directamente desde la API.
-    """
-    token = os.environ.get("APIFY_TOKEN", "")
-    store_id = os.environ.get("APIFY_DEFAULT_KEY_VALUE_STORE_ID", "")
-
-    log("INFO", f"Store ID: {store_id}")
-
-    if token and store_id:
-        url = (
-            f"https://api.apify.com/v2/key-value-stores/{store_id}"
-            f"/records/INPUT?token={token}"
-        )
-        resp = requests.get(url, timeout=30)
-        resp.raise_for_status()
-        return resp.json()
-
-    raise RuntimeError(
-        "No se encontraron las variables APIFY_TOKEN o "
-        "APIFY_DEFAULT_KEY_VALUE_STORE_ID. "
-        "¿Estás corriendo esto fuera de Apify?"
+def get_input(token: str, store_id: str) -> dict:
+    url = (
+        f"https://api.apify.com/v2/key-value-stores/{store_id}"
+        f"/records/INPUT?token={token}"
     )
+    resp = requests.get(url, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
 
 
 async def main() -> None:
+    token = os.environ.get("APIFY_TOKEN", "")
+    store_id = os.environ.get("APIFY_DEFAULT_KEY_VALUE_STORE_ID", "")
+    dataset_id = os.environ.get("APIFY_DEFAULT_DATASET_ID", "")
+
+    if not token or not store_id:
+        raise RuntimeError("No se encontraron APIFY_TOKEN o APIFY_DEFAULT_KEY_VALUE_STORE_ID.")
+
     log("INFO", "Leyendo input...")
-    actor_input = get_input()
+    actor_input = get_input(token, store_id)
     log("INFO", f"Input recibido: {json.dumps(actor_input)}")
 
     base_audio_url = actor_input["baseAudioUrl"]
@@ -85,7 +74,7 @@ async def main() -> None:
         ruta_base = download_audio(base_audio_url, carpeta_temp_path / "base_audio")
         audio_base = AudioSegment.from_file(ruta_base)
         duracion_base_seg = len(audio_base) / 1000
-        log("INFO", f"Duración del audio base: {duracion_base_seg:.2f}s")
+        log("INFO", f"Duracion del audio base: {duracion_base_seg:.2f}s")
 
         audios_temporales = {}
         for i, overlay in enumerate(overlays):
@@ -103,10 +92,8 @@ async def main() -> None:
         resultado.export(ruta_resultado, format=output_format)
         log("INFO", f"Audio procesado: {duracion_base_seg:.2f}s")
 
-        token = os.environ.get("APIFY_TOKEN", "")
-        store_id = os.environ.get("APIFY_DEFAULT_KEY_VALUE_STORE_ID", "")
+        # Subir el audio al Key-Value Store
         content_type = "audio/mpeg" if output_format == "mp3" else "audio/wav"
-
         upload_url = (
             f"https://api.apify.com/v2/key-value-stores/{store_id}"
             f"/records/OUTPUT?token={token}"
@@ -124,18 +111,20 @@ async def main() -> None:
             f"https://api.apify.com/v2/key-value-stores/{store_id}/records/OUTPUT"
         )
         log("INFO", f"Audio final disponible en: {output_url}")
-# Write result summary to dataset so it appears in the Results tab
-dataset_url = (
-    f"https://api.apify.com/v2/datasets/"
-    + os.environ.get("APIFY_DEFAULT_DATASET_ID", "")
-    + f"/items?token={token}"
-)
-requests.post(
-    dataset_url,
-    json=[{
-        "outputUrl": output_url,
-        "durationSec": duracion_base_seg,
-        "format": output_format,
-    }],
-    timeout=30,
-)
+
+        # Escribir resumen en el dataset para que aparezca en la tab Results
+        if dataset_id:
+            dataset_url = (
+                f"https://api.apify.com/v2/datasets/{dataset_id}"
+                f"/items?token={token}"
+            )
+            requests.post(
+                dataset_url,
+                json=[{
+                    "outputUrl": output_url,
+                    "durationSec": duracion_base_seg,
+                    "format": output_format,
+                }],
+                timeout=30,
+            )
+            log("INFO", "Resultado guardado en dataset.")
