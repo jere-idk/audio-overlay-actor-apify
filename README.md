@@ -1,71 +1,84 @@
-# Audio Overlay Actor
+# 🎵 Audio Overlay Actor
 
-Actor de Apify que superpone uno o más audios sobre un audio base, en
-momentos de tiempo específicos.
+An [Apify](https://apify.com) Actor that merges one or more audio files on top of a base audio track, at specific points in time.
 
-## Regla de negocio
+## How it works
 
-- El **audio base** (`baseAudioUrl`) determina la duración total del
-  resultado final.
-- Cada audio en `overlays` se mezcla a partir de su propio
-  `startTimeSec` (en segundos, contado desde el inicio del resultado).
-- Si un overlay se extiende más allá del final del audio base, se
-  recorta automáticamente. La duración final **siempre** es igual a
-  la duración del audio base.
+- The **base audio** (`baseAudioUrl`) always determines the total duration of the output.
+- Each audio in `overlays` is mixed in starting at its own `startTimeSec` (in seconds from the beginning of the result).
+- If an overlay extends beyond the end of the base audio, it is automatically trimmed. The final duration **always** equals the duration of the base audio — no exceptions.
 
 ## Input
 
 ```json
 {
-  "baseAudioUrl": "https://.../audio1.mp3",
+  "baseAudioUrl": "https://example.com/base.mp3",
   "overlays": [
-    { "audioUrl": "https://.../audio2.mp3", "startTimeSec": 5 }
+    {
+      "audioUrl": "https://example.com/overlay.mp3",
+      "startTimeSec": 5
+    }
   ],
   "outputFormat": "mp3"
 }
 ```
 
-| Campo | Tipo | Obligatorio | Descripción |
+| Field | Type | Required | Description |
 |---|---|---|---|
-| `baseAudioUrl` | string | Sí | URL pública del audio base |
-| `overlays` | array | Sí (puede ser vacío) | Lista de `{ audioUrl, startTimeSec }` |
-| `outputFormat` | string | No (default `mp3`) | `mp3` o `wav` |
+| `baseAudioUrl` | string | ✅ | Public URL of the base audio file. Its duration defines the output duration. |
+| `overlays` | array | ✅ | List of audio files to mix in, each with their own start time. Can be empty. |
+| `overlays[].audioUrl` | string | ✅ | Public URL of the audio to overlay (mp3 or wav). |
+| `overlays[].startTimeSec` | number | ✅ | Second at which this overlay starts playing in the final result. Must be ≥ 0. |
+| `outputFormat` | string | ❌ | Output file format: `mp3` (default) or `wav`. |
 
-## Output
+### Supported audio sources
 
-El Actor guarda el audio resultante en el Key-Value Store bajo la key
-`OUTPUT`, y además registra en el dataset un objeto con la URL de
-descarga, la duración y el formato:
+The Actor downloads audio files directly via URL. The URL must return the raw audio file — not an HTML page or a download confirmation screen.
+
+✅ Works: `raw.githubusercontent.com`, direct Dropbox links (`?dl=1`), any direct download URL.  
+❌ Doesn't work: Google Drive share links, YouTube, SoundCloud, or any URL that requires login.
+
+### Multiple overlays example
+
+You can mix more than one audio on top of the base:
 
 ```json
 {
-  "outputUrl": "https://api.apify.com/v2/key-value-stores/<id>/records/OUTPUT",
-  "durationSec": 10.0,
-  "format": "mp3"
-}
-```
-
-## Correr localmente
-
-```bash
-pip install -r requirements.txt
-# necesitás ffmpeg instalado en el sistema: apt-get install ffmpeg
-
-mkdir -p storage/key_value_stores/default
-cat > storage/key_value_stores/default/INPUT.json << 'EOF'
-{
-  "baseAudioUrl": "https://.../base.mp3",
-  "overlays": [{ "audioUrl": "https://.../overlay.mp3", "startTimeSec": 5 }],
+  "baseAudioUrl": "https://example.com/music.mp3",
+  "overlays": [
+    { "audioUrl": "https://example.com/voiceover.mp3", "startTimeSec": 0 },
+    { "audioUrl": "https://example.com/jingle.mp3", "startTimeSec": 30 }
+  ],
   "outputFormat": "mp3"
 }
-EOF
-
-APIFY_LOCAL_STORAGE_DIR=./storage python3 -m src
 ```
 
-## Próximos pasos (v2)
+## Output
 
-- Fades in/out
-- Secuenciar audios (en vez de solo superponer)
-- Ajuste de volumen por overlay
-- Loops de audio
+The Actor saves the resulting audio file to the run's Key-Value Store under the key `OUTPUT`. You can access it from:
+
+- The **Storage** tab in the Apify Console after the run completes.
+- Directly via the API:
+  ```
+  https://api.apify.com/v2/key-value-stores/{storeId}/records/OUTPUT
+  ```
+
+The run log also prints the full download URL at the end:
+```
+[INFO] Audio final disponible en: https://api.apify.com/v2/key-value-stores/.../records/OUTPUT
+```
+
+## Tech stack
+
+- **Python 3.12**
+- **Pydub** — audio mixing and processing
+- **FFmpeg** — underlying audio engine (installed via Dockerfile)
+- **Requests** — downloading audio files from URLs
+
+## Roadmap (v2)
+
+- [ ] Per-overlay volume control (`volumeDb`)
+- [ ] Fade in / fade out
+- [ ] Audio sequencing (back-to-back, not just simultaneous)
+- [ ] Loop an overlay N times
+- [ ] Trim the base audio before processing
