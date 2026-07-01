@@ -1,30 +1,23 @@
 """
 Audio Overlay Actor
---------------------
-Toma un audio "base" y le superpone uno o más audios en momentos
-específicos (en segundos). La duración del resultado final SIEMPRE
-es igual a la duración del audio base, sin importar cuánto duren
-los audios superpuestos.
+Sin dependencia del SDK de Apify — usa variables de entorno y
+el filesystem directamente, que es lo que hace el SDK por debajo.
 """
 
 from __future__ import annotations
 
+import json
+import os
 import tempfile
 from pathlib import Path
 
 import requests
 from pydub import AudioSegment
 
-from apify import Actor
-
 
 def download_audio(url: str, destino: Path) -> Path:
-    """
-    Descarga un archivo de audio desde una URL pública y lo guarda
-    en disco. Devuelve la ruta del archivo descargado.
-    """
     respuesta = requests.get(url, timeout=60)
-    respuesta.raise_for_status()  # lanza un error si la URL falla (404, 500, etc.)
+    respuesta.raise_for_status()
     destino.write_bytes(respuesta.content)
     return destino
 
@@ -34,102 +27,98 @@ def hacer_overlay(
     overlays: list[dict],
     audios_temporales: dict[str, Path],
 ) -> AudioSegment:
-    """
-    Superpone cada audio de 'overlays' sobre 'audio_base', respetando
-    el 'startTimeSec' de cada uno.
-
-    Regla clave: la duración final SIEMPRE es la del audio_base.
-    Pydub recorta automáticamente cualquier parte del overlay que
-    se pase del final del audio base, así que no necesitamos
-    lógica extra para eso.
-    """
     resultado = audio_base
-
     for overlay in overlays:
         ruta_audio = audios_temporales[overlay["audioUrl"]]
         audio_overlay = AudioSegment.from_file(ruta_audio)
-
-        # Pydub trabaja en milisegundos, por eso convertimos los segundos
         inicio_ms = int(overlay["startTimeSec"] * 1000)
-
-        # .overlay() mezcla el audio_overlay sobre 'resultado' a partir
-        # de 'position'. Si el audio_overlay se pasa del final de
-        # 'resultado', Pydub simplemente lo corta ahí. Esto es
-        # exactamente la regla de negocio que necesitamos.
         resultado = resultado.overlay(audio_overlay, position=inicio_ms)
-
     return resultado
 
 
+def log(nivel: str, mensaje: str) -> None:
+    print(f"[{nivel}] {mensaje}", flush=True)
+
+
 async def main() -> None:
-    async with Actor:
-        actor_input = await Actor.get_input() or {}
+    # Apify pasa el input como archivo JSON en el Key-Value Store local
+    input_path = Path(
+        os.environ.get("APIFY_INPUT_KEY", "INPUT")
+    )
+    kv_dir = Path(
+        os.environ.get(
+            "APIFY_LOCAL_STORAGE_DIR",
+            "/usr/src/app/apify_storage"
+        )
+    ) / "key_value_stores" / "default"
 
-        base_audio_url: str = actor_input["baseAudioUrl"]
-        overlays: list[dict] = actor_input.get("overlays", [])
-        output_format: str = actor_input.get("outputFormat", "mp3")
+    input_file = kv_dir / "INPUT.json"
+    if not input_file.exists():
+        # En producción Apify lo pasa por variable de entorno directamente
+        raw = os.environ.get("APIFY_INPUT", "{}")
+        actor_input = json.loads(raw)
+    else:
+        actor_input = json.loads(input_file.read_text())
 
-        if not overlays:
-            Actor.log.warning(
-                "No se especificaron overlays; el resultado será "
-                "igual al audio base sin modificaciones."
-            )
+    base_audio_url: str = actor_input["baseAudioUrl"]
+    overlays: list[dict] = actor_input.get("overlays", [])
+    output_format: str = actor_input.get("outputFormat", "mp3")
 
-        with tempfile.TemporaryDirectory() as carpeta_temp:
-            carpeta_temp_path = Path(carpeta_temp)
+    if not overlays:
+        log("WARN", "No se especificaron overlays; el resultado será igual al audio base.")
 
-            # 1. Descargamos el audio base
-            Actor.log.info(f"Descargando audio base: {base_audio_url}")
-            ruta_base = download_audio(
-                base_audio_url, carpeta_temp_path / "base_audio"
-            )
-            audio_base = AudioSegment.from_file(ruta_base)
+    with tempfile.TemporaryDirectory() as carpeta_temp:
+        carpeta_temp_path = Path(carpeta_temp)
 
-            duracion_base_seg = len(audio_base) / 1000
-            Actor.log.info(f"Duración del audio base: {duracion_base_seg:.2f}s")
+        log("INFO", f"Descargando audio base: {base_audio_url}")
+        ruta_base = download_audio(base_audio_url, carpeta_temp_path / "base_audio")
+        audio_base = AudioSegment.from_file(ruta_base)
+        duracion_base_seg = len(audio_base) / 1000
+        log("INFO", f"Duración del audio base: {duracion_base_seg:.2f}s")
 
-            # 2. Descargamos cada audio a superponer
-            audios_temporales: dict[str, Path] = {}
-            for i, overlay in enumerate(overlays):
-                url = overlay["audioUrl"]
-                if url not in audios_temporales:
-                    Actor.log.info(f"Descargando overlay {i + 1}: {url}")
-                    audios_temporales[url] = download_audio(
-                        url, carpeta_temp_path / f"overlay_{i}"
-                    )
+        audios_temporales: dict[str, Path] = {}
+        for i, overlay in enumerate(overlays):
+            url = overlay["audioUrl"]
+            if url not in audios_temporales:
+                log("INFO", f"Descargando overlay {i + 1}: {url}")
+                audios_temporales[url] = download_audio(
+                    url, carpeta_temp_path / f"overlay_{i}"
+                )
 
-            # 3. Hacemos el overlay
-            Actor.log.info("Procesando overlay de audios...")
-            resultado = hacer_overlay(audio_base, overlays, audios_temporales)
+        log("INFO", "Procesando overlay de audios...")
+        resultado = hacer_overlay(audio_base, overlays, audios_temporales)
 
-            # 4. Exportamos el resultado al formato pedido
-            ruta_resultado = carpeta_temp_path / f"resultado.{output_format}"
-            resultado.export(ruta_resultado, format=output_format)
+        ruta_resultado = carpeta_temp_path / f"resultado.{output_format}"
+        resultado.export(ruta_resultado, format=output_format)
+        log("INFO", f"Audio procesado: {duracion_base_seg:.2f}s")
 
-            # 5. Guardamos el archivo final en el Key-Value Store del Actor
-            #    y obtenemos una URL pública para descargarlo.
-            store = await Actor.open_key_value_store()
+        # Guardamos el resultado en el Key-Value Store de Apify
+        token = os.environ.get("APIFY_TOKEN", "")
+        store_id = os.environ.get("APIFY_DEFAULT_KEY_VALUE_STORE_ID", "")
+
+        if token and store_id:
             content_type = "audio/mpeg" if output_format == "mp3" else "audio/wav"
-            await store.set_value(
-                "OUTPUT",
-                ruta_resultado.read_bytes(),
-                content_type=content_type,
-            )
-
-            store_id = store.id
-            base_url = (
+            upload_url = (
                 f"https://api.apify.com/v2/key-value-stores/{store_id}"
-                f"/records/OUTPUT"
+                f"/records/OUTPUT?token={token}"
             )
+            with open(ruta_resultado, "rb") as f:
+                resp = requests.put(
+                    upload_url,
+                    data=f,
+                    headers={"Content-Type": content_type},
+                    timeout=120,
+                )
+                resp.raise_for_status()
 
-            Actor.log.info(f"Audio final disponible en: {base_url}")
-
-            # También lo dejamos en el dataset, por si preferís
-            # consumir el resultado desde ahí en vez del KV store.
-            await Actor.push_data(
-                {
-                    "outputUrl": base_url,
-                    "durationSec": duracion_base_seg,
-                    "format": output_format,
-                }
+            output_url = (
+                f"https://api.apify.com/v2/key-value-stores/{store_id}/records/OUTPUT"
             )
+            log("INFO", f"Audio final disponible en: {output_url}")
+        else:
+            # Modo local: guardamos en disco
+            output_local = Path("output") / f"resultado.{output_format}"
+            output_local.parent.mkdir(exist_ok=True)
+            import shutil
+            shutil.copy(ruta_resultado, output_local)
+            log("INFO", f"Modo local: archivo guardado en {output_local}")
