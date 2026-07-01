@@ -1,0 +1,44 @@
+{
+    "title": "Audio Overlay Input",
+    "type": "object",
+    "schemaVersion": 1,
+    "properties": {
+        "baseAudioUrl": {
+            "title": "Audio base (Audio 1)",
+            "type": "string",
+            "description": "URL pública del audio que se usará como base. Su duración determina la duración total del resultado final.",
+            "editor": "textfield",
+            "isSecret": false
+        },
+        "overlays": {
+            "title": "Audios a superponer",
+            "type": "array",
+            "description": "Lista de audios que se van a mezclar sobre el audio base. Cada uno con su propio momento de inicio (en segundos).",
+            "editor": "json",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "audioUrl": {
+                        "type": "string",
+                        "title": "URL del audio a superponer"
+                    },
+                    "startTimeSec": {
+                        "type": "number",
+                        "title": "Segundo de inicio dentro del resultado final",
+                        "minimum": 0
+                    }
+                },
+                "required": ["audioUrl", "startTimeSec"]
+            }
+        },
+        "outputFormat": {
+            "title": "Formato de salida",
+            "type": "string",
+            "description": "Formato del archivo de audio resultante.",
+            "editor": "select",
+            "enum": ["mp3", "wav"],
+            "default": "mp3"
+        }
+    },
+    "required": ["baseAudioUrl", "overlays"]
+}
