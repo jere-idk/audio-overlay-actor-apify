@@ -20,11 +20,13 @@
                 "properties": {
                     "audioUrl": {
                         "type": "string",
-                        "title": "URL del audio a superponer"
+                        "title": "URL del audio a superponer",
+                        "description": "URL pública del archivo de audio a superponer sobre el audio base (mp3 o wav)."
                     },
                     "startTimeSec": {
                         "type": "number",
                         "title": "Segundo de inicio dentro del resultado final",
+                        "description": "Momento en segundos desde el inicio del resultado en que comenzará a sonar este audio.",
                         "minimum": 0
                     }
                 },
@@ -39,6 +41,9 @@
             "enum": ["mp3", "wav"],
             "default": "mp3"
         }
+    },
+    "required": ["baseAudioUrl", "overlays"]
+}
     },
     "required": ["baseAudioUrl", "overlays"]
 }
