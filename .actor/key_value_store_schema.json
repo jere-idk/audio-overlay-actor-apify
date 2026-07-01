@@ -1,0 +1,22 @@
+{
+  "actorSpecification": 1,
+  "views": {
+    "overview": {
+      "title": "Output Audio",
+      "transformation": {
+        "keys": ["OUTPUT"]
+      },
+      "display": {
+        "component": "keyValue",
+        "keyLabel": "File",
+        "valueLabel": "Download",
+        "properties": {
+          "OUTPUT": {
+            "label": "Resulting audio file",
+            "description": "The processed audio file with all overlays applied. Duration equals the base audio."
+          }
+        }
+      }
+    }
+  }
+}

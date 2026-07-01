@@ -1,0 +1,23 @@
+{
+  "actorSpecification": 1,
+  "fields": {
+    "outputUrl": {
+      "title": "Output Audio URL",
+      "description": "Public URL to download the resulting audio file from the Apify Key-Value Store.",
+      "type": "string",
+      "example": "https://api.apify.com/v2/key-value-stores/abc123/records/OUTPUT"
+    },
+    "durationSec": {
+      "title": "Duration (seconds)",
+      "description": "Total duration of the output audio in seconds. Always equals the duration of the base audio.",
+      "type": "number",
+      "example": 10.0
+    },
+    "format": {
+      "title": "Output Format",
+      "description": "File format of the output audio.",
+      "type": "string",
+      "example": "mp3"
+    }
+  }
+}
