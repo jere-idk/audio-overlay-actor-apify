@@ -124,3 +124,18 @@ async def main() -> None:
             f"https://api.apify.com/v2/key-value-stores/{store_id}/records/OUTPUT"
         )
         log("INFO", f"Audio final disponible en: {output_url}")
+# Write result summary to dataset so it appears in the Results tab
+dataset_url = (
+    f"https://api.apify.com/v2/datasets/"
+    + os.environ.get("APIFY_DEFAULT_DATASET_ID", "")
+    + f"/items?token={token}"
+)
+requests.post(
+    dataset_url,
+    json=[{
+        "outputUrl": output_url,
+        "durationSec": duracion_base_seg,
+        "format": output_format,
+    }],
+    timeout=30,
+)
