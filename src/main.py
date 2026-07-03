@@ -13,6 +13,21 @@ import requests
 from pydub import AudioSegment
 
 
+# Mapa de formato -> content type MIME correcto para la API de Apify
+CONTENT_TYPES = {
+    "mp3":  "audio/mpeg",
+    "wav":  "audio/wav",
+    "ogg":  "audio/ogg",
+    "flac": "audio/flac",
+    "aac":  "audio/aac",
+    "m4a":  "audio/mp4",
+    "opus": "audio/opus",
+    "wma":  "audio/x-ms-wma",
+}
+
+SUPPORTED_FORMATS = list(CONTENT_TYPES.keys())
+
+
 def download_audio(url: str, destino: Path) -> Path:
     respuesta = requests.get(url, timeout=60)
     respuesta.raise_for_status()
@@ -62,7 +77,16 @@ async def main() -> None:
 
     base_audio_url = actor_input["baseAudioUrl"]
     overlays = actor_input.get("overlays", [])
-    output_format = actor_input.get("outputFormat", "mp3")
+    output_format = actor_input.get("outputFormat", "mp3").lower()
+
+    # Validamos que el formato pedido sea soportado
+    if output_format not in SUPPORTED_FORMATS:
+        raise ValueError(
+            f"Formato '{output_format}' no soportado. "
+            f"Formatos válidos: {', '.join(SUPPORTED_FORMATS)}"
+        )
+
+    log("INFO", f"Formato de salida: {output_format}")
 
     if not overlays:
         log("WARN", "No se especificaron overlays.")
@@ -72,6 +96,8 @@ async def main() -> None:
 
         log("INFO", f"Descargando audio base: {base_audio_url}")
         ruta_base = download_audio(base_audio_url, carpeta_temp_path / "base_audio")
+        # from_file() detecta el formato automaticamente por el contenido,
+        # no por la extension — por eso funciona con cualquier formato de entrada
         audio_base = AudioSegment.from_file(ruta_base)
         duracion_base_seg = len(audio_base) / 1000
         log("INFO", f"Duracion del audio base: {duracion_base_seg:.2f}s")
@@ -89,11 +115,13 @@ async def main() -> None:
         resultado = hacer_overlay(audio_base, overlays, audios_temporales)
 
         ruta_resultado = carpeta_temp_path / f"resultado.{output_format}"
+        # export() convierte al formato pedido independientemente del formato
+        # original de los audios de entrada
         resultado.export(ruta_resultado, format=output_format)
         log("INFO", f"Audio procesado: {duracion_base_seg:.2f}s")
 
-        # Subir el audio al Key-Value Store
-        content_type = "audio/mpeg" if output_format == "mp3" else "audio/wav"
+        # Subir al Key-Value Store con el content type correcto para el formato
+        content_type = CONTENT_TYPES[output_format]
         upload_url = (
             f"https://api.apify.com/v2/key-value-stores/{store_id}"
             f"/records/OUTPUT?token={token}"
@@ -112,7 +140,6 @@ async def main() -> None:
         )
         log("INFO", f"Audio final disponible en: {output_url}")
 
-        # Escribir resumen en el dataset para que aparezca en la tab Results
         if dataset_id:
             dataset_url = (
                 f"https://api.apify.com/v2/datasets/{dataset_id}"
