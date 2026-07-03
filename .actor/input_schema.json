@@ -4,17 +4,17 @@
     "schemaVersion": 1,
     "properties": {
         "baseAudioUrl": {
-            "title": "Audio base (Audio 1)",
+            "title": "Base Audio URL",
             "type": "string",
-            "description": "URL pública del audio que se usará como base. Su duración determina la duración total del resultado final.",
+            "description": "Public URL of the base audio file. Its duration determines the total duration of the output — regardless of the length of the overlaid tracks.",
             "editor": "textfield",
             "isSecret": false,
             "prefill": "https://github.com/jere-idk/audio-overlay-actor-apify/raw/refs/heads/main/samples/audio%201_test.mp3"
         },
         "overlays": {
-            "title": "Audios a superponer",
+            "title": "Overlay Tracks",
             "type": "array",
-            "description": "Lista de audios que se van a mezclar sobre el audio base. Cada uno con su propio momento de inicio (en segundos).",
+            "description": "List of audio files to mix on top of the base audio. Each one starts playing at its own startTimeSec. Supports any format (mp3, wav, ogg, flac, aac, etc.).",
             "editor": "json",
             "prefill": [
                 {
@@ -27,28 +27,28 @@
                 "properties": {
                     "audioUrl": {
                         "type": "string",
-                        "title": "URL del audio a superponer",
-                        "description": "URL pública del archivo de audio a superponer sobre el audio base (mp3 o wav)."
+                        "title": "Overlay Audio URL",
+                        "description": "Public URL of the audio file to overlay on the base track (mp3, wav, ogg, flac, aac, opus, etc.)."
                     },
                     "startTimeSec": {
                         "type": "number",
-                        "title": "Segundo de inicio dentro del resultado final",
-                        "description": "Momento en segundos desde el inicio del resultado en que comenzará a sonar este audio.",
+                        "title": "Start Time (seconds)",
+                        "description": "The point in the output (in seconds from the start) at which this overlay begins playing. Must be >= 0.",
                         "minimum": 0
                     }
                 },
                 "required": ["audioUrl", "startTimeSec"]
             }
         },
-"outputFormat": {
-    "title": "Output format",
-    "type": "string",
-    "description": "Format of the output audio file. The input audios can be in any format — they will be automatically converted.",
-    "editor": "select",
-    "enum": ["mp3", "wav", "ogg", "flac", "aac", "m4a", "opus", "wma"],
-    "enumTitles": ["MP3", "WAV", "OGG", "FLAC", "AAC", "M4A (AAC)", "OPUS", "WMA"],
-    "default": "mp3"
-}
+        "outputFormat": {
+            "title": "Output Format",
+            "type": "string",
+            "description": "Format of the output audio file. Input tracks can be in any format — they are automatically converted by FFmpeg.",
+            "editor": "select",
+            "enum": ["mp3", "wav", "ogg", "flac", "aac", "m4a", "opus", "wma"],
+            "enumTitles": ["MP3", "WAV", "OGG", "FLAC", "AAC", "M4A (AAC)", "OPUS", "WMA"],
+            "default": "mp3"
+        }
     },
     "required": ["baseAudioUrl", "overlays"]
 }
