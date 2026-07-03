@@ -8,13 +8,20 @@
             "type": "string",
             "description": "URL pública del audio que se usará como base. Su duración determina la duración total del resultado final.",
             "editor": "textfield",
-            "isSecret": false
+            "isSecret": false,
+            "prefill": "https://github.com/jere-idk/audio-overlay-actor-apify/raw/refs/heads/main/samples/audio%201_test.mp3"
         },
         "overlays": {
             "title": "Audios a superponer",
             "type": "array",
             "description": "Lista de audios que se van a mezclar sobre el audio base. Cada uno con su propio momento de inicio (en segundos).",
             "editor": "json",
+            "prefill": [
+                {
+                    "audioUrl": "https://github.com/jere-idk/audio-overlay-actor-apify/raw/refs/heads/main/samples/audio%202_test.mp3",
+                    "startTimeSec": 0
+                }
+            ],
             "items": {
                 "type": "object",
                 "properties": {
