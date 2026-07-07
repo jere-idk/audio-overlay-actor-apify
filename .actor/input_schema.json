@@ -43,6 +43,7 @@
                         "type": "string",
                         "title": "Overlay Audio URL",
                         "description": "Public URL of the audio file to overlay on the base track (mp3, wav, ogg, flac, aac, opus, etc.)."
+                        },
                         "volumeDb": {
                             "type": "integer",
                             "title": "Overlay Volume (dB)",
