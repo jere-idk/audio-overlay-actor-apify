@@ -1,23 +1,45 @@
 {
-  "actorSpecification": 1,
-  "fields": {
-    "outputUrl": {
-      "title": "Output Audio URL",
-      "description": "Public URL to download the resulting audio file from the Apify Key-Value Store.",
-      "type": "string",
-      "example": "https://api.apify.com/v2/key-value-stores/abc123/records/OUTPUT"
+    "actorSpecification": 1,
+    "fields": {
+        "outputUrl": {
+            "type": "string",
+            "title": "Output Audio URL",
+            "description": "Public URL to download the resulting audio file from the Apify Key-Value Store."
+        },
+        "durationSec": {
+            "type": "number",
+            "title": "Duration (seconds)",
+            "description": "Total duration of the output audio. Always equals the base audio duration."
+        },
+        "format": {
+            "type": "string",
+            "title": "Output Format",
+            "description": "File format of the output audio (mp3, wav, ogg, flac, aac, m4a, opus, wma)."
+        }
     },
-    "durationSec": {
-      "title": "Duration (seconds)",
-      "description": "Total duration of the output audio in seconds. Always equals the duration of the base audio.",
-      "type": "number",
-      "example": 10.0
-    },
-    "format": {
-      "title": "Output Format",
-      "description": "File format of the output audio.",
-      "type": "string",
-      "example": "mp3"
+    "views": {
+        "overview": {
+            "title": "Output",
+            "transformation": {
+                "fields": ["outputUrl", "durationSec", "format"]
+            },
+            "display": {
+                "component": "table",
+                "properties": {
+                    "outputUrl": {
+                        "label": "Download URL",
+                        "format": "link"
+                    },
+                    "durationSec": {
+                        "label": "Duration (sec)",
+                        "format": "number"
+                    },
+                    "format": {
+                        "label": "Format",
+                        "format": "text"
+                    }
+                }
+            }
+        }
     }
-  }
 }
