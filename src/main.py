@@ -13,7 +13,6 @@ import requests
 from pydub import AudioSegment
 
 
-# Mapa de formato -> content type MIME correcto para la API de Apify
 CONTENT_TYPES = {
     "mp3":  "audio/mpeg",
     "wav":  "audio/wav",
@@ -26,6 +25,9 @@ CONTENT_TYPES = {
 }
 
 SUPPORTED_FORMATS = list(CONTENT_TYPES.keys())
+
+# Formatos que soportan control de bitrate (comprimidos con pérdida)
+FORMATS_WITH_BITRATE = {"mp3", "ogg", "aac", "m4a", "opus", "wma"}
 
 
 def download_audio(url: str, destino: Path) -> Path:
@@ -44,6 +46,13 @@ def hacer_overlay(
     for overlay in overlays:
         ruta_audio = audios_temporales[overlay["audioUrl"]]
         audio_overlay = AudioSegment.from_file(ruta_audio)
+
+        # Aplicar volumen individual si se especificó (en dB)
+        # +6dB = doble de volumen, -6dB = mitad, -20dB = muy suave
+        volume_db = overlay.get("volumeDb", 0)
+        if volume_db != 0:
+            audio_overlay = audio_overlay + volume_db
+
         inicio_ms = int(overlay["startTimeSec"] * 1000)
         resultado = resultado.overlay(audio_overlay, position=inicio_ms)
     return resultado
@@ -78,15 +87,14 @@ async def main() -> None:
     base_audio_url = actor_input["baseAudioUrl"]
     overlays = actor_input.get("overlays", [])
     output_format = actor_input.get("outputFormat", "mp3").lower()
+    bitrate = actor_input.get("bitrate", None)
+    base_volume_db = actor_input.get("baseVolumeDb", 0)
 
-    # Validamos que el formato pedido sea soportado
     if output_format not in SUPPORTED_FORMATS:
         raise ValueError(
             f"Formato '{output_format}' no soportado. "
             f"Formatos válidos: {', '.join(SUPPORTED_FORMATS)}"
         )
-
-    log("INFO", f"Formato de salida: {output_format}")
 
     if not overlays:
         log("WARN", "No se especificaron overlays.")
@@ -96,9 +104,13 @@ async def main() -> None:
 
         log("INFO", f"Descargando audio base: {base_audio_url}")
         ruta_base = download_audio(base_audio_url, carpeta_temp_path / "base_audio")
-        # from_file() detecta el formato automaticamente por el contenido,
-        # no por la extension — por eso funciona con cualquier formato de entrada
         audio_base = AudioSegment.from_file(ruta_base)
+
+        # Volumen del audio base
+        if base_volume_db != 0:
+            log("INFO", f"Ajustando volumen del audio base: {base_volume_db:+}dB")
+            audio_base = audio_base + base_volume_db
+
         duracion_base_seg = len(audio_base) / 1000
         log("INFO", f"Duracion del audio base: {duracion_base_seg:.2f}s")
 
@@ -114,13 +126,20 @@ async def main() -> None:
         log("INFO", "Procesando overlay...")
         resultado = hacer_overlay(audio_base, overlays, audios_temporales)
 
+        # Armar parametros de exportacion
+        export_params = {"format": output_format}
+        if bitrate and output_format in FORMATS_WITH_BITRATE:
+            export_params["bitrate"] = f"{bitrate}k"
+            log("INFO", f"Exportando en formato {output_format} a {bitrate}kbps")
+        elif bitrate and output_format not in FORMATS_WITH_BITRATE:
+            log("WARN", f"El formato {output_format} no soporta control de bitrate — ignorando parámetro.")
+        else:
+            log("INFO", f"Exportando en formato {output_format} (bitrate por defecto)")
+
         ruta_resultado = carpeta_temp_path / f"resultado.{output_format}"
-        # export() convierte al formato pedido independientemente del formato
-        # original de los audios de entrada
-        resultado.export(ruta_resultado, format=output_format)
+        resultado.export(ruta_resultado, **export_params)
         log("INFO", f"Audio procesado: {duracion_base_seg:.2f}s")
 
-        # Subir al Key-Value Store con el content type correcto para el formato
         content_type = CONTENT_TYPES[output_format]
         upload_url = (
             f"https://api.apify.com/v2/key-value-stores/{store_id}"
@@ -151,6 +170,7 @@ async def main() -> None:
                     "outputUrl": output_url,
                     "durationSec": duracion_base_seg,
                     "format": output_format,
+                    "bitrate": f"{bitrate}kbps" if bitrate else "default",
                 }],
                 timeout=30,
             )
