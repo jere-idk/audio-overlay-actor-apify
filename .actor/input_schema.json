@@ -23,8 +23,7 @@
                 "type": "integer",
                 "description": "Bitrate of the output file in kbps. Only applies to compressed formats (mp3, ogg, aac, opus). Lower = smaller file, lower quality. Typical values: 320 (max), 128 (standard), 64 (voice), 32 (light), 8 (minimum intelligible).",
                 "editor": "number"
-            }
-        },
+            },
         "overlays": {
             "title": "Overlay Tracks",
             "type": "array",
@@ -48,7 +47,7 @@
                             "type": "integer",
                             "title": "Overlay Volume (dB)",
                             "description": "Volume adjustment for this overlay in decibels. 0 = no change, positive = louder, negative = quieter."
-                        }
+                        },
                     "startTimeSec": {
                         "type": "number",
                         "title": "Start Time (seconds)",
