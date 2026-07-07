@@ -32,7 +32,8 @@
             "prefill": [
                 {
                     "audioUrl": "https://github.com/jere-idk/audio-overlay-actor-apify/raw/refs/heads/main/samples/audio%202_test.mp3",
-                    "startTimeSec": 0
+                    "startTimeSec": 0,
+                    "volumeDb": 0
                 }
             ],
             "items": {
