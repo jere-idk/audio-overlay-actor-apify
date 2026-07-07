@@ -10,12 +10,14 @@
             "editor": "textfield",
             "isSecret": false,
             "prefill": "https://github.com/jere-idk/audio-overlay-actor-apify/raw/refs/heads/main/samples/audio%201_test.mp3"
+        },
             "baseVolumeDb": {
             "title": "Base Audio Volume (dB)",
             "type": "integer",
             "description": "Volume adjustment for the base audio in decibels. 0 = no change, positive = louder, negative = quieter. Example: -6 cuts volume roughly in half.",
             "editor": "number",
-            "default": 0,
+            "default": 0
+            },
             "bitrate": {
                 "title": "Output Bitrate (kbps)",
                 "type": "integer",
