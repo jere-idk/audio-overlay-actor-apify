@@ -15,8 +15,7 @@
             "type": "integer",
             "description": "Volume adjustment for the base audio in decibels. 0 = no change, positive = louder, negative = quieter. Example: -6 cuts volume roughly in half.",
             "editor": "number",
-            "default": 0
-            },
+            "default": 0,
             "bitrate": {
                 "title": "Output Bitrate (kbps)",
                 "type": "integer",
@@ -46,7 +45,7 @@
                             "type": "integer",
                             "title": "Overlay Volume (dB)",
                             "description": "Volume adjustment for this overlay in decibels. 0 = no change, positive = louder, negative = quieter."
-}
+                        }
                     },
                     "startTimeSec": {
                         "type": "number",
