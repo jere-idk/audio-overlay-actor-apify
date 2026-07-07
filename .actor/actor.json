@@ -2,8 +2,12 @@
     "actorSpecification": 1,
     "name": "audio-overlay",
     "title": "Audio Overlay",
-    "description": "Superpone uno o más audios sobre un audio base en posiciones de tiempo específicas. La duración del resultado final siempre es igual a la duración del audio base.",
+    "description": "Superpone uno o más audios sobre un audio base en posiciones de tiempo específicas.",
     "version": "0.1",
     "input": "./input_schema.json",
-    "dockerfile": "./Dockerfile"
+    "dockerfile": "./Dockerfile",
+    "output": "./output_schema.json",
+    "storages": {
+        "dataset": "./dataset_schema.json"
+    }
 }
