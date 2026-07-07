@@ -49,7 +49,6 @@
                             "title": "Overlay Volume (dB)",
                             "description": "Volume adjustment for this overlay in decibels. 0 = no change, positive = louder, negative = quieter."
                         }
-                    },
                     "startTimeSec": {
                         "type": "number",
                         "title": "Start Time (seconds)",
