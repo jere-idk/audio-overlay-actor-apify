@@ -1,0 +1,19 @@
+{
+    "actorOutputSchemaVersion": 1,
+    "title": "Audio Overlay Output",
+    "description": "The processed audio file with all overlays applied, plus a summary in the dataset.",
+    "properties": {
+        "audioFile": {
+            "type": "string",
+            "title": "Output Audio File",
+            "description": "The resulting audio file with all overlays mixed in. Duration always equals the base audio.",
+            "template": "{{links.apiDefaultKeyValueStoreUrl}}/records/OUTPUT"
+        },
+        "results": {
+            "type": "string",
+            "title": "Run Summary",
+            "description": "Dataset item with the output URL, duration in seconds, and format of the resulting file.",
+            "template": "{{links.apiDefaultDatasetUrl}}/items"
+        }
+    }
+}
